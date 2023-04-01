@@ -1,8 +1,7 @@
-use std::f32::consts::PI;
+use std::f32::consts::{TAU};
 
 use bevy::{
     prelude::*,
-    //utils::FloatOrd,
     sprite::{MaterialMesh2dBundle},
     math::f32::Vec2
 };
@@ -10,17 +9,17 @@ use bevy::{
 const WIDTH: f32 = 1000.;
 const HEIGHT: f32 = 500.;
 
-const BOID_SPEED: f32 = 5.;
+const BOID_SPEED: f32 = 150.;
+const BOID_ROTATE_SPEED: f32 = 0.5;
 const BOID_SCALE: f32 = 0.5;
-const SEPARATION_CIRCLE_RADIUS: f32 = 150.*BOID_SCALE;
+const SEPARATION_CIRCLE_RADIUS: f32 = 200.;
+const SEPARATION_CONE_ANGLE: f32 = 45.0;
 
 fn main() {
     App::new()
         .add_plugins(DefaultPlugins)
         .add_startup_system(setup)
-        .add_system(boid_force_calc)
-        // .add_system(turn_boid)
-        .add_system(move_boid)
+        .add_systems((boid_force_calc, turn_boid, move_boid).chain())
         .run();
 }
 
@@ -31,7 +30,7 @@ struct Boid;
 struct Collider;
 
 #[derive(Component)]
-struct Force {force: Vec2,}
+struct Force {force: Vec3,}
 
 #[derive(Component)]
 struct Ahead;
@@ -58,36 +57,16 @@ fn setup(
     commands.spawn(Camera2dBundle::default()); 
 
     //Boids
-    for i in 0..1 {
-        //Test Circle
-        commands.spawn((
-            MaterialMesh2dBundle {
-                mesh:meshes.add(shape::Circle::new(25.).into()).into(),
-                material: materials.add(ColorMaterial::from(Color::RED)),
-                transform: Transform::from_translation(Vec3::new(0., 0., 2.)),
-                ..default()
-            },
-            //Force {force: Vec2::new(0., 0.)},
-        ));
-
+    for i in 0..20 {
+        
         //Separation Circle
         let circle = commands.spawn((
             MaterialMesh2dBundle {
                 mesh: meshes.add(shape::Circle::new(SEPARATION_CIRCLE_RADIUS/BOID_SCALE).into()).into(), 
                 material: materials.add(ColorMaterial::from(Color::PURPLE)),
+                visibility: Visibility::Hidden,
                 ..default()
             },
-        )).id();
-
-        //Ahead Point
-        let ahead = commands.spawn((
-            MaterialMesh2dBundle {
-                mesh: meshes.add(shape::Circle::new(10.).into()).into(),
-                material: materials.add(ColorMaterial::from(Color::RED)),
-                transform: Transform::from_translation(Vec3::new(50., 0., 0.)),
-                ..default()
-            },
-            Ahead,
         )).id();
 
         //Rectangle
@@ -99,69 +78,74 @@ fn setup(
                     custom_size: Some(Vec2::new(100.0, 50.0)),
                     ..default()
                 },
-                transform: Transform::from_translation(Vec3::new(j*60.-100., 0., 1.))
-                .with_rotation(Quat::from_rotation_z(j*30.0_f32.to_radians()))
+                transform: Transform::from_translation(Vec3::new((j*60.)-100.+1., 0., 1.))
+                .with_rotation(Quat::from_rotation_z((j*30.0_f32+1.).to_radians()))
                 .with_scale(Vec3 { x: BOID_SCALE, y: BOID_SCALE, z: 1. }),
                 ..default()
             },
             Boid,
-        )).push_children(&[circle, ahead]);
+        )).push_children(&[circle]);
     
     }
 }
 
 fn boid_force_calc(
     mut commands: Commands,
-    boids: Query<(Entity, &GlobalTransform), With<Boid>>,
-    collider_query: Query<&GlobalTransform, With<Boid>>,
+    boids: Query<(Entity, &Transform), With<Boid>>,
+    collider_query: Query<&Transform, With<Boid>>,
 ) {
     for (entity, transform1) in &boids {
-        let mut forcesum = Vec2::new(0., 0.);
+
+        let mut forcesum = Vec3::new(0., 0., 0.);
 
         for transform2 in &collider_query {
-            let transform1_2d = Vec2::new(transform1.translation().x, transform1.translation().y) ;
-            let transform2_2d = Vec2::new(transform2.translation().x, transform2.translation().y) ;
+            if transform1 == transform2 {continue}
 
-            let dist = transform1_2d.distance(transform2_2d);
-            
-            if dist <= SEPARATION_CIRCLE_RADIUS
-            {
-                forcesum += (transform1_2d - transform2_2d).normalize_or_zero();
+            let dif_vector = transform2.translation - transform1.translation;
+
+            if dif_vector.angle_between(transform1.local_x()) > SEPARATION_CONE_ANGLE.to_radians()/2. {
+                continue
             }
-            commands.entity(entity).insert(Force {force: forcesum});
-            //println!("{:?}", forcesum)
+            
+            if dif_vector.length() < SEPARATION_CIRCLE_RADIUS {
+                forcesum += -dif_vector;
+                // -(transform1.translation() - transform2.translation());
+            }
+            if forcesum.length() > 0. {
+                commands.entity(entity).insert(Force {force: forcesum});
+            }
         }
     }
 }
 
-// fn turn_boid(
-//     mut boids: Query<(&mut Transform, &Children), With<Boid>>,
-//     aheads: Query<&GlobalTransform>,
-// ) {
-//     for (mut transform, children) in &mut boids.iter() {
+fn turn_boid(
+    mut commands: Commands,
+    mut boids: Query<(Entity, &mut Transform, &Force), With<Boid>>,
+    timer: Res<Time>,
+) {
+    for (entity, mut transform, force) in &mut boids {
+        
+        println!("{:?}", force.force);
 
-//         for &child in children.iter() {
-//             let aheadloc = aheads.get(child).unwrap().translation();
-            
-//             println!("{:?}", aheadloc);
-            
-//             let target = aheadloc ;
-//             // transform.rotate_z(1.0_f32.to_radians());
-            
-//             transform.rotation = transform.looking_at(target, Vec3::new(0., 0., 1.));
-//         }
-//     }
-// }
+        if force.force.angle_between(transform.local_y()) < 90.0_f32.to_radians() {
+            transform.rotate_z(BOID_ROTATE_SPEED * TAU * timer.delta_seconds());            
+        } else {
+            transform.rotate_z(-BOID_ROTATE_SPEED * TAU * timer.delta_seconds());            
+
+        }
+        commands.entity(entity).remove::<Force>();
+
+    }
+}
 
 fn move_boid(
     mut boids: Query<&mut Transform, With<Boid>>,
+    timer: Res<Time>,
 ) {
     for mut transform in &mut boids {
-        
-        let angle = transform.rotation.z;
 
-        transform.translation.x += BOID_SPEED*(angle.cos());
-        transform.translation.y += BOID_SPEED*(angle.sin());
+        let direction = transform.local_x();
+        transform.translation += direction * BOID_SPEED * timer.delta_seconds();
 
         if transform.translation.y < -HEIGHT/2. {transform.translation.y += HEIGHT};
         if transform.translation.y >= HEIGHT/2. {transform.translation.y -= HEIGHT};
