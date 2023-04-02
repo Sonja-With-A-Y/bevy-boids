@@ -11,9 +11,15 @@ const HEIGHT: f32 = 500.;
 
 const BOID_SPEED: f32 = 150.;
 const BOID_ROTATE_SPEED: f32 = 0.5;
-const BOID_SCALE: f32 = 0.5;
-const SEPARATION_CIRCLE_RADIUS: f32 = 200.;
+const BOID_SCALE: f32 = 0.25;
+const SEPARATION_CIRCLE_RADIUS: f32 = 75.;
+const SEPARATION_CONE_RADIUS: f32 = 200.;
 const SEPARATION_CONE_ANGLE: f32 = 45.0;
+
+//Dracula colours
+const DRAC_BACKGROUND: Color = Color::rgb(40./255., 42./255., 54./255.);
+const DRAC_PURPLE: Color = Color::rgb(189./255., 147./255., 249./255.);
+
 
 fn main() {
     App::new()
@@ -46,7 +52,7 @@ fn setup(
     //Background
     commands.spawn(SpriteBundle {
         sprite: Sprite {
-            color: Color::rgb(0.5, 0.25, 0.75),
+            color: DRAC_BACKGROUND,
             custom_size: Some(Vec2::new(WIDTH, HEIGHT)),
             ..default()
         },
@@ -74,7 +80,7 @@ fn setup(
         commands.spawn((
             SpriteBundle {
                 sprite: Sprite {
-                    color: Color::rgb(0.25, 0.25, 0.75),
+                    color: DRAC_PURPLE,
                     custom_size: Some(Vec2::new(100.0, 50.0)),
                     ..default()
                 },
@@ -103,17 +109,21 @@ fn boid_force_calc(
 
             let dif_vector = transform2.translation - transform1.translation;
 
+            if dif_vector.length() < SEPARATION_CIRCLE_RADIUS {
+                forcesum += -(dif_vector.normalize()*SEPARATION_CIRCLE_RADIUS - dif_vector);
+            }
+
             if dif_vector.angle_between(transform1.local_x()) > SEPARATION_CONE_ANGLE.to_radians()/2. {
                 continue
             }
             
-            if dif_vector.length() < SEPARATION_CIRCLE_RADIUS {
-                forcesum += -dif_vector;
-                // -(transform1.translation() - transform2.translation());
+            if dif_vector.length() < SEPARATION_CONE_RADIUS {
+                forcesum += -(dif_vector.normalize()*SEPARATION_CONE_RADIUS - dif_vector);
             }
-            if forcesum.length() > 0. {
-                commands.entity(entity).insert(Force {force: forcesum});
-            }
+        }
+
+        if forcesum.length() > 0. {
+            commands.entity(entity).insert(Force {force: forcesum});
         }
     }
 }
@@ -124,13 +134,12 @@ fn turn_boid(
     timer: Res<Time>,
 ) {
     for (entity, mut transform, force) in &mut boids {
-        
-        println!("{:?}", force.force);
+        let real_turn_speed = force.force.length() * 0.01 * BOID_ROTATE_SPEED * TAU * timer.delta_seconds();
 
         if force.force.angle_between(transform.local_y()) < 90.0_f32.to_radians() {
-            transform.rotate_z(BOID_ROTATE_SPEED * TAU * timer.delta_seconds());            
+            transform.rotate_z(real_turn_speed);            
         } else {
-            transform.rotate_z(-BOID_ROTATE_SPEED * TAU * timer.delta_seconds());            
+            transform.rotate_z(-real_turn_speed);
 
         }
         commands.entity(entity).remove::<Force>();
