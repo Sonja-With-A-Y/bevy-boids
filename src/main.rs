@@ -1,13 +1,13 @@
-use std::f32::consts::{TAU};
+use std::{f32::consts::{TAU}, ops::MulAssign};
 
 use bevy::{
     prelude::*,
     sprite::{MaterialMesh2dBundle},
-    math::f32::Vec2
+    math::f32::{ Vec2, Vec3 }
 };
 
-const WIDTH: f32 = 1000.;
-const HEIGHT: f32 = 500.;
+const WIDTH: f32 = 1500.;
+const HEIGHT: f32 = 750.;
 
 const BOID_SPEED: f32 = 150.;
 const BOID_ROTATE_SPEED: f32 = 0.5;
@@ -15,6 +15,7 @@ const BOID_SCALE: f32 = 0.25;
 const SEPARATION_CIRCLE_RADIUS: f32 = 75.;
 const SEPARATION_CONE_RADIUS: f32 = 200.;
 const SEPARATION_CONE_ANGLE: f32 = 45.0;
+const ALIGN_INCLUSION_RADIUS: f32 = 150.;
 
 //Dracula colours
 const DRAC_BACKGROUND: Color = Color::rgb(40./255., 42./255., 54./255.);
@@ -63,7 +64,7 @@ fn setup(
     commands.spawn(Camera2dBundle::default()); 
 
     //Boids
-    for i in 0..20 {
+    for i in 0..50 {
         
         //Separation Circle
         let circle = commands.spawn((
@@ -103,11 +104,22 @@ fn boid_force_calc(
     for (entity, transform1) in &boids {
 
         let mut forcesum = Vec3::new(0., 0., 0.);
+        let mut closest_boid: Vec3 = Vec3::from_array([10000., 10000., 10000.]);
 
         for transform2 in &collider_query {
             if transform1 == transform2 {continue}
 
             let dif_vector = transform2.translation - transform1.translation;
+
+            if dif_vector.length() < (transform1.translation - closest_boid).length() {
+                closest_boid = transform2.translation;
+            }
+
+            if dif_vector.length() < ALIGN_INCLUSION_RADIUS
+                && transform2.local_x().angle_between(transform1.local_x()) < 90.0_f32.to_radians()
+                {
+                    forcesum += 10.* transform2.local_x();
+                }
 
             if dif_vector.length() < SEPARATION_CIRCLE_RADIUS {
                 forcesum += -(dif_vector.normalize()*SEPARATION_CIRCLE_RADIUS - dif_vector);
@@ -121,6 +133,7 @@ fn boid_force_calc(
                 forcesum += -(dif_vector.normalize()*SEPARATION_CONE_RADIUS - dif_vector);
             }
         }
+        forcesum += 1.*(closest_boid - transform1.translation);
 
         if forcesum.length() > 0. {
             commands.entity(entity).insert(Force {force: forcesum});
