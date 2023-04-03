@@ -2,7 +2,8 @@ use std::f32::consts::TAU;
 
 use bevy::{
     prelude::*,
-    math::f32::{ Vec2, Vec3 }
+    math::f32::{ Vec2, Vec3 },
+    ecs::system::Command,
 };
 
 const WIDTH: f32 = 1500.;
@@ -20,29 +21,23 @@ const ALIGN_INCLUSION_RADIUS: f32 = 150.;
 const DRAC_BACKGROUND: Color = Color::rgb(40./255., 42./255., 54./255.);
 const DRAC_PURPLE: Color = Color::rgb(189./255., 147./255., 249./255.);
 
-
 fn main() {
     App::new()
         .add_plugins(DefaultPlugins)
         .add_startup_system(setup)
-        .add_systems((boid_force_calc, turn_boid, move_boid).chain())
+        .add_systems((boid_force_calc, turn_boid, /*sympathy_force_calc,*/ move_boid).chain())
         .run();
 }
 
 #[derive(Component)]
 struct Boid;
 
-#[derive(Component)]
-struct Collider;
+#[derive(Component, Copy, Clone, Default, Resource)]
+#[component(storage = "SparseSet")]
+struct Force (Vec3);
 
-#[derive(Component)]
-struct Force {force: Vec3,}
+struct AddForce(Vec3);
 
-#[derive(Component)]
-struct Ahead;
-
-#[derive(Component)]
-struct CollisionEvent;
 
 fn setup(
     mut commands: Commands,
@@ -86,14 +81,28 @@ fn setup(
 fn boid_force_calc(
     mut commands: Commands,
     boids: Query<(Entity, &Transform), With<Boid>>,
-    collider_query: Query<&Transform, With<Boid>>,
+    neighbour_query: Query<&Transform, With<Boid>>,
 ) {
     for (entity, transform1) in &boids {
 
         let mut forcesum = Vec3::new(0., 0., 0.);
-        let mut closest_boid: Vec3 = Vec3::from_array([10000., 10000., 10000.]);
+        let mut closest_boid = Vec3::new(10000., 10000., 10000.);
 
-        for transform2 in &collider_query {
+        //Wall avoidance
+        if transform1.translation.x < -WIDTH/2. + 150. {
+            forcesum += 175.*Vec3::new(1., 0., 0.);
+        } else if transform1.translation.x > WIDTH/2. - 150. {
+            forcesum += 175.*Vec3::new(-1., 0., 0.);
+        }
+
+        if transform1.translation.y < -HEIGHT/2. + 150. {
+            forcesum += 175.*Vec3::new(0., 1., 0.);
+        } else if transform1.translation.y > HEIGHT/2. - 150. {
+            forcesum += 175.*Vec3::new(0., -1., 0.);
+        }
+        
+        //Boid avoidance
+        for transform2 in &neighbour_query {
             if transform1 == transform2 {continue}
 
             let dif_vector = transform2.translation - transform1.translation;
@@ -101,12 +110,6 @@ fn boid_force_calc(
             if dif_vector.length() < (transform1.translation - closest_boid).length() {
                 closest_boid = transform2.translation;
             }
-
-            if dif_vector.length() < ALIGN_INCLUSION_RADIUS
-                && transform2.local_x().angle_between(transform1.local_x()) < 90.0_f32.to_radians()
-                {
-                    forcesum += 10.* transform2.local_x();
-                }
 
             if dif_vector.length() < SEPARATION_CIRCLE_RADIUS {
                 forcesum += -(dif_vector.normalize()*SEPARATION_CIRCLE_RADIUS - dif_vector);
@@ -120,10 +123,37 @@ fn boid_force_calc(
                 forcesum += -(dif_vector.normalize()*SEPARATION_CONE_RADIUS - dif_vector);
             }
         }
+        
+        //Boid loneliness
         forcesum += 1.*(closest_boid - transform1.translation);
 
-        if forcesum.length() > 0. {
-            commands.entity(entity).insert(Force {force: forcesum});
+        //First force application
+        if forcesum.length() > 0.1 {
+            commands.entity(entity).insert(Force(forcesum));
+        }
+    }
+
+}
+
+fn sympathy_force_calc(
+        mut commands: Commands,
+        mut boids: Query<(Entity, &Force, &Transform), With<Boid>>,
+        neighbour_query: Query<(&Transform, &Force), With<Boid>>,
+    ) {
+    //Sympathy
+    for (entity, &force1, transform1) in boids.iter_mut() {
+        let mut forcesum = Vec3::new(0., 0., 0.);
+
+        for (transform2, force2) in neighbour_query.iter() {
+
+            if (transform2.translation - transform1.translation).length() < ALIGN_INCLUSION_RADIUS {
+                forcesum += 5.* force2.0;
+            }
+        }
+
+        //Second force application
+        if forcesum.length() > 0.1 {
+            commands.entity(entity).remove::<Force>();
         }
     }
 }
@@ -134,9 +164,9 @@ fn turn_boid(
     timer: Res<Time>,
 ) {
     for (entity, mut transform, force) in &mut boids {
-        let real_turn_speed = force.force.length() * 0.01 * BOID_ROTATE_SPEED * TAU * timer.delta_seconds();
+        let real_turn_speed = force.0.length() * 0.01 * BOID_ROTATE_SPEED * TAU * timer.delta_seconds();
 
-        if force.force.angle_between(transform.local_y()) < 90.0_f32.to_radians() {
+        if force.0.angle_between(transform.local_y()) < 90.0_f32.to_radians() {
             transform.rotate_z(real_turn_speed);            
         } else {
             transform.rotate_z(-real_turn_speed);
