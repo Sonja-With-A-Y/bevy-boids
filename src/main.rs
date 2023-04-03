@@ -1,8 +1,7 @@
-use std::{f32::consts::{TAU}, ops::MulAssign};
+use std::f32::consts::TAU;
 
 use bevy::{
     prelude::*,
-    sprite::{MaterialMesh2dBundle},
     math::f32::{ Vec2, Vec3 }
 };
 
@@ -47,8 +46,6 @@ struct CollisionEvent;
 
 fn setup(
     mut commands: Commands,
-    mut meshes: ResMut<Assets<Mesh>>,
-    mut materials: ResMut<Assets<ColorMaterial>>,
 ) {
     //Background
     commands.spawn(SpriteBundle {
@@ -66,16 +63,6 @@ fn setup(
     //Boids
     for i in 0..50 {
         
-        //Separation Circle
-        let circle = commands.spawn((
-            MaterialMesh2dBundle {
-                mesh: meshes.add(shape::Circle::new(SEPARATION_CIRCLE_RADIUS/BOID_SCALE).into()).into(), 
-                material: materials.add(ColorMaterial::from(Color::PURPLE)),
-                visibility: Visibility::Hidden,
-                ..default()
-            },
-        )).id();
-
         //Rectangle
         let j = i as f32;
         commands.spawn((
@@ -91,7 +78,7 @@ fn setup(
                 ..default()
             },
             Boid,
-        )).push_children(&[circle]);
+        ));
     
     }
 }
