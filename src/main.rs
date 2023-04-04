@@ -7,22 +7,19 @@ use bevy::{
 };
 
 const WIDTH: f32 = 1500.;
-const HEIGHT: f32 = 750.;
+const HEIGHT: f32 = 900.;
 
-const BOID_SPEED: f32 = 150.;
-const BOID_ROTATE_SPEED: f32 = 0.5;
-const BOID_SCALE: f32 = 0.25;
+const BOID_SPEED: f32 = 80.;
+const BOID_ROTATE_SPEED: f32 = 0.3;
+const BOID_SCALE: f32 = 1.;
 const SEPARATION_CIRCLE_RADIUS: f32 = 75.;
 const SEPARATION_CONE_RADIUS: f32 = 200.;
 const SEPARATION_CONE_ANGLE: f32 = 45.0;
 const ALIGN_INCLUSION_RADIUS: f32 = 150.;
 
-//Dracula colours
-const DRAC_BACKGROUND: Color = Color::rgb(40./255., 42./255., 54./255.);
-const DRAC_PURPLE: Color = Color::rgb(189./255., 147./255., 249./255.);
-
 fn main() {
     App::new()
+        .insert_resource(ClearColor(Color::rgb(0.22, 0.745, 1.)))
         .add_plugins(DefaultPlugins)
         .add_startup_system(setup)
         .add_systems((boid_force_calc, turn_boid, /*sympathy_force_calc,*/ move_boid).chain())
@@ -38,21 +35,11 @@ struct Force (Vec3);
 
 struct AddForce(Vec3);
 
-
 fn setup(
     mut commands: Commands,
+    asset_server: Res<AssetServer>,
 ) {
-    //Background
-    commands.spawn(SpriteBundle {
-        sprite: Sprite {
-            color: DRAC_BACKGROUND,
-            custom_size: Some(Vec2::new(WIDTH, HEIGHT)),
-            ..default()
-        },
-        transform: Transform::from_translation(Vec3::new(0., 0., 0.)),
-        ..default()
-    });
-    //Camera
+   //Camera
     commands.spawn(Camera2dBundle::default()); 
 
     //Boids
@@ -62,11 +49,7 @@ fn setup(
         let j = i as f32;
         commands.spawn((
             SpriteBundle {
-                sprite: Sprite {
-                    color: DRAC_PURPLE,
-                    custom_size: Some(Vec2::new(100.0, 50.0)),
-                    ..default()
-                },
+                texture: asset_server.load("duck.png"),
                 transform: Transform::from_translation(Vec3::new((j*60.)-100.+1., 0., 1.))
                 .with_rotation(Quat::from_rotation_z((j*30.0_f32+1.).to_radians()))
                 .with_scale(Vec3 { x: BOID_SCALE, y: BOID_SCALE, z: 1. }),
