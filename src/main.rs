@@ -5,6 +5,8 @@ use bevy::{
     math::f32::Vec3,
 };
 
+use bevy_embedded_assets::EmbeddedAssetPlugin;
+
 const WIDTH: f32 = 1300.;
 const HEIGHT: f32 = 800.;
 
@@ -19,7 +21,7 @@ const ALIGN_INCLUSION_RADIUS: f32 = 150.;
 fn main() {
     App::new()
         .insert_resource(ClearColor(Color::rgb(0.263, 0.573, 0.945)))
-        .add_plugins(DefaultPlugins)
+        .add_plugins(DefaultPlugins.build().add_before::<bevy::asset::AssetPlugin, _>(EmbeddedAssetPlugin),)
         .add_startup_system(setup)
         .add_systems((boid_force_calc, sympathy_force_calc, turn_boid, move_boid).chain())
         .run();
@@ -39,12 +41,13 @@ fn setup(
    //Camera
     commands.spawn(Camera2dBundle::default()); 
 
+    let duck_sprite: Handle<Image> = asset_server.load("duck.png");
     //Boids
     for i in 0..50 {
         let j = i as f32;
         commands.spawn((
             SpriteBundle {
-                texture: asset_server.load("duck.png"),
+                texture: duck_sprite.clone().into(),
                 transform: Transform::from_translation(Vec3::new((j*60.)-100.+1., 0., 1.))
                 .with_rotation(Quat::from_rotation_z((j*30.0_f32+1.).to_radians()))
                 .with_scale(Vec3 { x: BOID_SCALE, y: BOID_SCALE, z: 1. }),
