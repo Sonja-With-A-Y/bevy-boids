@@ -1,3 +1,4 @@
+//Imports
 use std::collections::HashMap;
 
 use bevy::{
@@ -7,26 +8,36 @@ use bevy::{
 
 use bevy_embedded_assets::EmbeddedAssetPlugin;
 
+//Configuration
 const WIDTH: f32 = 1300.;
 const HEIGHT: f32 = 800.;
+const BACKGROUND_COLOR: bevy::prelude::Color = Color::rgb(0.263, 0.573, 0.945);
+
+const NUMBER_OF_BOIDS: i32 = 50;
+const BOID_SCALE: f32 = 1.;
 
 const BOID_SPEED: f32 = 80.;
 const BOID_ROTATE_SPEED: f32 = 0.5;
-const BOID_SCALE: f32 = 1.;
+
 const SEPARATION_CIRCLE_RADIUS: f32 = 75.;
 const SEPARATION_CONE_RADIUS: f32 = 200.;
 const SEPARATION_CONE_ANGLE: f32 = 45.0;
+
 const ALIGN_INCLUSION_RADIUS: f32 = 150.;
 
+const WALL_AVOIDANCE_DISTANCE: f32 = 200.;
+
+//Main
 fn main() {
     App::new()
-        .insert_resource(ClearColor(Color::rgb(0.263, 0.573, 0.945)))
+        .insert_resource(ClearColor(BACKGROUND_COLOR))
         .add_plugins(DefaultPlugins.build().add_before::<bevy::asset::AssetPlugin, _>(EmbeddedAssetPlugin),)
         .add_startup_system(setup)
         .add_systems((boid_force_calc, sympathy_force_calc, turn_boid, move_boid).chain())
         .run();
 }
 
+//Components
 #[derive(Component)]
 struct Boid;
 
@@ -34,6 +45,7 @@ struct Boid;
 #[component(storage = "SparseSet")]
 struct Force (Vec3);
 
+//Systems
 fn setup(
     mut commands: Commands,
     asset_server: Res<AssetServer>,
@@ -43,7 +55,7 @@ fn setup(
 
     let duck_sprite: Handle<Image> = asset_server.load("duck.png");
     //Boids
-    for i in 0..50 {
+    for i in 0..NUMBER_OF_BOIDS {
         let j = i as f32;
         commands.spawn((
             SpriteBundle {
@@ -71,15 +83,9 @@ fn boid_force_calc(
 
         //Wall avoidance
         if transform1.translation.x < -WIDTH/2. + 150. {
-            forcesum += 200.*Vec3::new(1., 0., 0.);
-        } else if transform1.translation.x > WIDTH/2. - 150. {
-            forcesum += 200.*Vec3::new(-1., 0., 0.);
-        }
-
-        if transform1.translation.y < -HEIGHT/2. + 150. {
-            forcesum += 200.*Vec3::new(0., 1., 0.);
+            forcesum += WALL_AVOIDANCE_DISTANCE*Vec3::new(1., 0., 0.);
         } else if transform1.translation.y > HEIGHT/2. - 150. {
-            forcesum += 200.*Vec3::new(0., -1., 0.);
+            forcesum += WALL_AVOIDANCE_DISTANCE*Vec3::new(0., -1., 0.);
         }
         
         for transform2 in &neighbour_query {
