@@ -26,6 +26,7 @@ const SEPARATION_CONE_ANGLE: f32 = 45.0;
 const ALIGN_INCLUSION_RADIUS: f32 = 150.;
 
 const WALL_AVOIDANCE_DISTANCE: f32 = 200.;
+const WALL_AVOIDANCE_PUSH: f32 = 150.;
 
 //Main
 fn main() {
@@ -51,7 +52,10 @@ fn setup(
     asset_server: Res<AssetServer>,
 ) {
    //Camera
-    commands.spawn(Camera2dBundle::default()); 
+    commands.spawn(Camera3dBundle {
+        transform: Transform::from_xyz(-2.0, 2.5, 5.0).looking_at(Vec3::ZERO, Vec3::Y),
+        ..default()
+    });
 
     let duck_sprite: Handle<Image> = asset_server.load("duck.png");
     //Boids
@@ -82,10 +86,10 @@ fn boid_force_calc(
         let mut closest_boid = Vec3::new(10000., 10000., 10000.);
 
         //Wall avoidance
-        if transform1.translation.x < -WIDTH/2. + 150. {
-            forcesum += WALL_AVOIDANCE_DISTANCE*Vec3::new(1., 0., 0.);
-        } else if transform1.translation.y > HEIGHT/2. - 150. {
-            forcesum += WALL_AVOIDANCE_DISTANCE*Vec3::new(0., -1., 0.);
+        if transform1.translation.x < -WIDTH/2. + WALL_AVOIDANCE_DISTANCE {
+            forcesum += WALL_AVOIDANCE_PUSH*Vec3::new(1., 0., 0.);
+        } else if transform1.translation.y > HEIGHT/2. - WALL_AVOIDANCE_DISTANCE {
+            forcesum += WALL_AVOIDANCE_PUSH*Vec3::new(0., -1., 0.);
         }
         
         for transform2 in &neighbour_query {
