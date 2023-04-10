@@ -14,7 +14,7 @@ const HEIGHT: f32 = 800.;
 const BACKGROUND_COLOR: bevy::prelude::Color = Color::rgb(0.263, 0.573, 0.945);
 
 const NUMBER_OF_BOIDS: i32 = 50;
-const BOID_SCALE: f32 = 1.;
+const BOID_SCALE: f32 = 10.;
 
 const BOID_SPEED: f32 = 80.;
 const BOID_ROTATE_SPEED: f32 = 0.5;
@@ -49,24 +49,28 @@ struct Force (Vec3);
 //Systems
 fn setup(
     mut commands: Commands,
-    asset_server: Res<AssetServer>,
+    //asset_server: Res<AssetServer>,
+    mut meshes: ResMut<Assets<Mesh>>,
+    mut materials: ResMut<Assets<StandardMaterial>>,
 ) {
    //Camera
     commands.spawn(Camera3dBundle {
-        transform: Transform::from_xyz(-2.0, 2.5, 5.0).looking_at(Vec3::ZERO, Vec3::Y),
+        transform: Transform::from_xyz(400.0, 400.0, 400.0).looking_at(Vec3::ZERO, Vec3::Z),
         ..default()
     });
 
-    let duck_sprite: Handle<Image> = asset_server.load("duck.png");
+  //  let duck_sprite: Handle<Image> = asset_server.load("duck.png");
     //Boids
     for i in 0..NUMBER_OF_BOIDS {
         let j = i as f32;
         commands.spawn((
-            SpriteBundle {
-                texture: duck_sprite.clone().into(),
+            PbrBundle {
+                mesh: meshes.add(Mesh::from(shape::Cube { size: 1.0 })),
+                material: materials.add(Color::rgb(0.8, 0.7, 0.6).into()),
+//                texture: duck_sprite.clone().into(),
                 transform: Transform::from_translation(Vec3::new((j*60.)-100.+1., 0., 1.))
                 .with_rotation(Quat::from_rotation_z((j*30.0_f32+1.).to_radians()))
-                .with_scale(Vec3 { x: BOID_SCALE, y: BOID_SCALE, z: 1. }),
+                .with_scale(Vec3 { x: BOID_SCALE, y: BOID_SCALE, z: BOID_SCALE }),
                 ..default()
             },
             Boid,
