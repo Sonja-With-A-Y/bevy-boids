@@ -9,14 +9,14 @@ use bevy::{
 use bevy_embedded_assets::EmbeddedAssetPlugin;
 
 //Configuration
-const WIDTH: f32 = 1300.;
-const HEIGHT: f32 = 800.;
-const BACKGROUND_COLOR: bevy::prelude::Color = Color::rgb(0.263, 0.573, 0.945);
+const WIDTH: f32 = 100.;
+const HEIGHT: f32 = 100.;
+//const BACKGROUND_COLOR: bevy::prelude::Color = Color::rgb(0.263, 0.573, 0.945);
 
 const NUMBER_OF_BOIDS: i32 = 50;
-const BOID_SCALE: f32 = 10.;
+const BOID_SCALE: f32 = 2.;
 
-const BOID_SPEED: f32 = 80.;
+const BOID_SPEED: f32 = 20.;
 const BOID_ROTATE_SPEED: f32 = 0.5;
 
 const SEPARATION_CIRCLE_RADIUS: f32 = 75.;
@@ -31,7 +31,7 @@ const WALL_AVOIDANCE_PUSH: f32 = 150.;
 //Main
 fn main() {
     App::new()
-        .insert_resource(ClearColor(BACKGROUND_COLOR))
+//        .insert_resource(ClearColor(BACKGROUND_COLOR))
         .add_plugins(DefaultPlugins.build().add_before::<bevy::asset::AssetPlugin, _>(EmbeddedAssetPlugin),)
         .add_startup_system(setup)
         .add_systems((boid_force_calc, sympathy_force_calc, turn_boid, move_boid).chain())
@@ -53,9 +53,27 @@ fn setup(
     mut meshes: ResMut<Assets<Mesh>>,
     mut materials: ResMut<Assets<StandardMaterial>>,
 ) {
+
+    commands.spawn(PointLightBundle {
+        point_light: PointLight {
+            intensity: 15000.0,
+            range: 1000.,
+            shadows_enabled: true,
+            ..default()
+        },
+        transform: Transform::from_xyz(0.0, 0., 25.0),
+        ..default()
+    });
+
    //Camera
     commands.spawn(Camera3dBundle {
-        transform: Transform::from_xyz(400.0, 400.0, 400.0).looking_at(Vec3::ZERO, Vec3::Z),
+        transform: Transform::from_xyz(150.0, 150.0, 80.0).looking_at(Vec3::ZERO, Vec3::Z),
+        ..default()
+    });
+
+    commands.spawn(PbrBundle {
+        mesh: meshes.add(shape::Circle::new(100.).into()),
+        material: materials.add(Color::rgb(0.263, 0.573, 0.945).into()),
         ..default()
     });
 
@@ -66,7 +84,7 @@ fn setup(
         commands.spawn((
             PbrBundle {
                 mesh: meshes.add(Mesh::from(shape::Cube { size: 1.0 })),
-                material: materials.add(Color::rgb(0.8, 0.7, 0.6).into()),
+                material: materials.add(Color::rgb(0.408, 0.584, 0.506).into()),
 //                texture: duck_sprite.clone().into(),
                 transform: Transform::from_translation(Vec3::new((j*60.)-100.+1., 0., 1.))
                 .with_rotation(Quat::from_rotation_z((j*30.0_f32+1.).to_radians()))
