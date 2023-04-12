@@ -11,6 +11,7 @@ use bevy_embedded_assets::EmbeddedAssetPlugin;
 //Configuration
 const WIDTH: f32 = 100.;
 const HEIGHT: f32 = 100.;
+const POND_RADIIUS: f32 = 200.;
 //const BACKGROUND_COLOR: bevy::prelude::Color = Color::rgb(0.263, 0.573, 0.945);
 
 const NUMBER_OF_BOIDS: i32 = 50;
@@ -19,14 +20,14 @@ const BOID_SCALE: f32 = 2.;
 const BOID_SPEED: f32 = 20.;
 const BOID_ROTATE_SPEED: f32 = 0.5;
 
-const SEPARATION_CIRCLE_RADIUS: f32 = 75.;
-const SEPARATION_CONE_RADIUS: f32 = 200.;
+const SEPARATION_CIRCLE_RADIUS: f32 = 25.;
+const SEPARATION_CONE_RADIUS: f32 = 20.;
 const SEPARATION_CONE_ANGLE: f32 = 45.0;
 
-const ALIGN_INCLUSION_RADIUS: f32 = 150.;
+const ALIGN_INCLUSION_RADIUS: f32 = 25.;
 
-const WALL_AVOIDANCE_DISTANCE: f32 = 200.;
-const WALL_AVOIDANCE_PUSH: f32 = 150.;
+const WALL_AVOIDANCE_DISTANCE: f32 = 50.;
+const WALL_AVOIDANCE_PUSH: f32 = 1500.;
 
 //Main
 fn main() {
@@ -56,8 +57,8 @@ fn setup(
 
     commands.spawn(PointLightBundle {
         point_light: PointLight {
-            intensity: 15000.0,
-            range: 1000.,
+            intensity: 150000.0,
+            range: 10000.,
             shadows_enabled: true,
             ..default()
         },
@@ -86,7 +87,7 @@ fn setup(
                 mesh: meshes.add(Mesh::from(shape::Cube { size: 1.0 })),
                 material: materials.add(Color::rgb(0.408, 0.584, 0.506).into()),
 //                texture: duck_sprite.clone().into(),
-                transform: Transform::from_translation(Vec3::new((j*60.)-100.+1., 0., 1.))
+                transform: Transform::from_translation(Vec3::new(j*6., 0., 1.))
                 .with_rotation(Quat::from_rotation_z((j*30.0_f32+1.).to_radians()))
                 .with_scale(Vec3 { x: BOID_SCALE, y: BOID_SCALE, z: BOID_SCALE }),
                 ..default()
@@ -108,12 +109,11 @@ fn boid_force_calc(
         let mut closest_boid = Vec3::new(10000., 10000., 10000.);
 
         //Wall avoidance
-        if transform1.translation.x < -WIDTH/2. + WALL_AVOIDANCE_DISTANCE {
-            forcesum += WALL_AVOIDANCE_PUSH*Vec3::new(1., 0., 0.);
-        } else if transform1.translation.y > HEIGHT/2. - WALL_AVOIDANCE_DISTANCE {
-            forcesum += WALL_AVOIDANCE_PUSH*Vec3::new(0., -1., 0.);
+        if transform1.translation.length() > POND_RADIIUS - WALL_AVOIDANCE_DISTANCE {
+            forcesum += -WALL_AVOIDANCE_PUSH*transform1.translation;
         }
         
+        //Boid relations setup
         for transform2 in &neighbour_query {
             if transform1 == transform2 {continue}
 
@@ -220,14 +220,7 @@ fn move_boid(
     timer: Res<Time>,
 ) {
     for mut transform in &mut boids {
-
         let direction = transform.local_x();
         transform.translation += direction * BOID_SPEED * timer.delta_seconds();
-
-        if transform.translation.y < -HEIGHT/2. {transform.translation.y += HEIGHT};
-        if transform.translation.y >= HEIGHT/2. {transform.translation.y -= HEIGHT};
-        if transform.translation.x < -WIDTH/2. {transform.translation.x += WIDTH};
-        if transform.translation.x >= WIDTH/2. {transform.translation.x -= WIDTH};
-
     }
 }
