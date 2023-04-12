@@ -73,7 +73,7 @@ fn setup(
     });
 
     commands.spawn(PbrBundle {
-        mesh: meshes.add(shape::Circle::new(100.).into()),
+        mesh: meshes.add(shape::Circle::new(POND_RADIIUS).into()),
         material: materials.add(Color::rgb(0.263, 0.573, 0.945).into()),
         ..default()
     });
