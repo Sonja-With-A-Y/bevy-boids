@@ -1,18 +1,17 @@
 //Imports
 use std::collections::HashMap;
 
+use std::time::Duration;
+
 use bevy::{
-    prelude::*,
+    prelude::{*, shape::Capsule},
     math::f32::Vec3,
 };
 
 use bevy_embedded_assets::EmbeddedAssetPlugin;
 
 //Configuration
-const WIDTH: f32 = 100.;
-const HEIGHT: f32 = 100.;
 const POND_RADIIUS: f32 = 200.;
-//const BACKGROUND_COLOR: bevy::prelude::Color = Color::rgb(0.263, 0.573, 0.945);
 
 const NUMBER_OF_BOIDS: i32 = 50;
 const BOID_SCALE: f32 = 2.;
@@ -42,6 +41,12 @@ fn main() {
 //Components
 #[derive(Component)]
 struct Boid;
+
+#[derive(Resource)]
+struct SeedTimer { timer: Timer }
+
+#[derive(Component)]
+struct Seed;
 
 #[derive(Component, Copy, Clone, Default, Resource)]
 #[component(storage = "SparseSet")]
@@ -224,3 +229,38 @@ fn move_boid(
         transform.translation += direction * BOID_SPEED * timer.delta_seconds();
     }
 }
+
+fn drop_seeds(
+    mut commands: Commands,
+    time: Res<Time>,
+    mut seed_timer: ResMut<SeedTimer>,
+    seeds: Query<&Transform, With<Seed>>,
+    mut meshes: ResMut<Assets<Mesh>>,
+    mut materials: ResMut<Assets<StandardMaterial>>,
+) {
+    seed_timer.timer.tick(time.delta());
+
+    if seed_timer.timer.finished() {
+        commands.spawn((
+                PbrBundle {
+                    mesh: meshes.add(shape::Capsule::default().into()),
+                    material: materials.add(Color::rgb(0.8, 0.6, 0.0).into()),
+                    ..default()
+                },
+                Seed,
+                ));
+    }
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
