@@ -1,5 +1,6 @@
 //Imports
 use std::collections::HashMap;
+use rand::prelude::*;
 
 use std::time::Duration;
 
@@ -34,7 +35,7 @@ fn main() {
 //        .insert_resource(ClearColor(BACKGROUND_COLOR))
         .add_plugins(DefaultPlugins.build().add_before::<bevy::asset::AssetPlugin, _>(EmbeddedAssetPlugin),)
         .add_startup_system(setup)
-        .add_systems((boid_force_calc, sympathy_force_calc, turn_boid, move_boid).chain())
+        .add_systems((boid_force_calc, sympathy_force_calc, turn_boid, move_boid, drop_seeds).chain())
         .run();
 }
 
@@ -83,7 +84,6 @@ fn setup(
         ..default()
     });
 
-  //  let duck_sprite: Handle<Image> = asset_server.load("duck.png");
     //Boids
     for i in 0..NUMBER_OF_BOIDS {
         let j = i as f32;
@@ -101,6 +101,11 @@ fn setup(
         ));
     
     }
+
+    //Start see timer
+    commands.insert_resource(SeedTimer {
+        timer:Timer::new(Duration::from_secs(10), TimerMode::Repeating),
+    })
 }
 
 fn boid_force_calc(
@@ -234,21 +239,31 @@ fn drop_seeds(
     mut commands: Commands,
     time: Res<Time>,
     mut seed_timer: ResMut<SeedTimer>,
-    seeds: Query<&Transform, With<Seed>>,
     mut meshes: ResMut<Assets<Mesh>>,
     mut materials: ResMut<Assets<StandardMaterial>>,
 ) {
     seed_timer.timer.tick(time.delta());
+
+    let angle = (rand::thread_rng().gen_range(0..360) as f32).to_radians();
+    let radius = rand::thread_rng().gen_range(0..POND_RADIIUS as i32) as f32;
+    let seed_transform = Transform::from_translation(Vec3::new(
+        angle.cos(),
+        angle.sin(),
+        1.
+    )*radius);
+
+
 
     if seed_timer.timer.finished() {
         commands.spawn((
                 PbrBundle {
                     mesh: meshes.add(shape::Capsule::default().into()),
                     material: materials.add(Color::rgb(0.8, 0.6, 0.0).into()),
+                    transform: seed_transform,
                     ..default()
                 },
                 Seed,
-                ));
+        ));
     }
 }
 
