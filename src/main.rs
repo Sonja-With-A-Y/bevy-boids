@@ -27,15 +27,18 @@ const BOID_SIGHT_ANGLE: f32 = 45.0;
 const ALIGN_INCLUSION_RADIUS: f32 = 25.;
 
 const WALL_AVOIDANCE_DISTANCE: f32 = 50.;
-const WALL_AVOIDANCE_PUSH: f32 = 1500.;
+const WALL_AVOIDANCE_PUSH: f32 = 15.;
 
 const SEED_EAT_RANGE: f32 = 5.;
 const SEED_SPAWN_RATE: u64 = 5;
+const HUNGER_RANGE: f32 = 80.;
+const HUNGER_FACTOR: f32 = 80.;
 
 //Main
 fn main() {
     App::new()
-        .add_plugins(DefaultPlugins.build().add_before::<bevy::asset::AssetPlugin, _>(EmbeddedAssetPlugin),)
+        .add_plugins(DefaultPlugins.build()
+        .add_before::<bevy::asset::AssetPlugin, _>(EmbeddedAssetPlugin),)
         .add_startup_system(setup)
         .add_systems((
                 boid_force_calc,
@@ -122,6 +125,7 @@ fn boid_force_calc(
     mut commands: Commands,
     boids: Query<(Entity, &Transform), With<Boid>>,
     neighbour_query: Query<&Transform, With<Boid>>,
+    seeds: Query<&Transform, With<Seed>>,
 ) {
     for (entity, transform1) in &boids {
 
@@ -131,6 +135,13 @@ fn boid_force_calc(
         //Wall avoidance
         if transform1.translation.length() > POND_RADIIUS - WALL_AVOIDANCE_DISTANCE {
             forcesum += -WALL_AVOIDANCE_PUSH*transform1.translation;
+        }
+
+        //Seed sighted
+        for seed in &seeds {
+            if transform1.translation.distance(seed.translation) < HUNGER_RANGE {
+                forcesum += (seed.translation - transform1.translation).normalize()*HUNGER_FACTOR;
+            }
         }
         
         //Boid relations setup
