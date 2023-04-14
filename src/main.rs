@@ -1,10 +1,10 @@
 //Imports
 use std::collections::HashMap;
+use std::time::Duration;
 use rand::prelude::*;
 
-use std::time::Duration;
-
 use bevy::{
+    pbr::prelude::*,
     prelude::*,
     math::f32::Vec3,
 };
@@ -15,7 +15,7 @@ use bevy_embedded_assets::EmbeddedAssetPlugin;
 const POND_RADIIUS: f32 = 200.;
 
 const NUMBER_OF_BOIDS: i32 = 50;
-const BOID_SCALE: f32 = 2.;
+const BOID_SCALE: f32 = 20.;
 
 const BOID_SPEED: f32 = 20.;
 const BOID_ROTATE_SPEED: f32 = 0.5;
@@ -34,11 +34,17 @@ const SEED_SPAWN_RATE: u64 = 5;
 const HUNGER_RANGE: f32 = 80.;
 const HUNGER_FACTOR: f32 = 80.;
 
+#[derive(Resource)]
+struct GameAssets {
+    boid_scene: Handle<Scene>,
+}
+
 //Main
 fn main() {
     App::new()
         .add_plugins(DefaultPlugins.build()
         .add_before::<bevy::asset::AssetPlugin, _>(EmbeddedAssetPlugin),)
+        .add_startup_system(asset_loading.in_base_set(StartupSet::PreStartup))
         .add_startup_system(setup)
         .add_systems((
                 boid_force_calc,
@@ -47,9 +53,14 @@ fn main() {
                 move_boid,
                 drop_seeds,
                 delete_seed,
-        )
-        .chain())
+        ).chain())
         .run();
+}
+
+fn asset_loading(mut commands: Commands, assets: Res<AssetServer>) {
+    commands.insert_resource(GameAssets {
+        boid_scene: assets.load("duck.glb#Scene0"),
+    });
 }
 
 //Components
@@ -66,22 +77,16 @@ struct Seed;
 #[component(storage = "SparseSet")]
 struct Force (Vec3);
 
-//Systems
 fn setup(
     mut commands: Commands,
     //asset_server: Res<AssetServer>,
     mut meshes: ResMut<Assets<Mesh>>,
     mut materials: ResMut<Assets<StandardMaterial>>,
+    game_assets: Res<GameAssets>,
 ) {
-
-    commands.spawn(PointLightBundle {
-        point_light: PointLight {
-            intensity: 150000.0,
-            range: 10000.,
-            shadows_enabled: true,
-            ..default()
-        },
-        transform: Transform::from_xyz(0.0, 0., 25.0),
+    //Light
+    commands.insert_resource(AmbientLight {
+        brightness: 1.,
         ..default()
     });
 
@@ -91,6 +96,7 @@ fn setup(
         ..default()
     });
 
+    //Pond
     commands.spawn(PbrBundle {
         mesh: meshes.add(shape::Circle::new(POND_RADIIUS).into()),
         material: materials.add(Color::rgb(0.263, 0.573, 0.945).into()),
@@ -101,18 +107,15 @@ fn setup(
     for i in 0..NUMBER_OF_BOIDS {
         let j = i as f32;
         commands.spawn((
-            PbrBundle {
-                mesh: meshes.add(Mesh::from(shape::Cube { size: 1.0 })),
-                material: materials.add(Color::rgb(0.408, 0.584, 0.506).into()),
-//                texture: duck_sprite.clone().into(),
+            SceneBundle {
+                scene: game_assets.boid_scene.clone(),
                 transform: Transform::from_translation(Vec3::new(j*6., 0., 1.))
                 .with_rotation(Quat::from_rotation_z((j*30.0_f32+1.).to_radians()))
                 .with_scale(Vec3 { x: BOID_SCALE, y: BOID_SCALE, z: BOID_SCALE }),
-                ..default()
+                ..Default::default()
             },
             Boid,
         ));
-    
     }
 
     //Start see timer
@@ -128,11 +131,10 @@ fn boid_force_calc(
     seeds: Query<&Transform, With<Seed>>,
 ) {
     for (entity, transform1) in &boids {
-
         let mut forcesum = Vec3::new(0., 0., 0.);
         let mut closest_boid = Vec3::new(10000., 10000., 10000.);
 
-        //Wall avoidance
+        //Pond edge avoidance
         if transform1.translation.length() > POND_RADIIUS - WALL_AVOIDANCE_DISTANCE {
             forcesum += -WALL_AVOIDANCE_PUSH*transform1.translation;
         }
@@ -147,7 +149,6 @@ fn boid_force_calc(
         //Boid relations setup
         for transform2 in &neighbour_query {
             if transform1 == transform2 {continue}
-
             let dif_vector = transform2.translation - transform1.translation;
 
             if dif_vector.length() < (transform1.translation - closest_boid).length() {
@@ -166,11 +167,11 @@ fn boid_force_calc(
                     forcesum += 15.*transform2.local_x();
                 }
 
+            //Boid avoidance in sight
             if dif_vector.angle_between(transform1.local_x()) > BOID_SIGHT_ANGLE.to_radians()/2. {
                 continue
             }
-            
-            //Boid avoidance in sight
+
             if dif_vector.length() < BOID_SIGHT_RANGE {
                 forcesum += -(dif_vector.normalize()*BOID_SIGHT_RANGE - dif_vector);
             }
@@ -198,6 +199,7 @@ fn sympathy_force_calc(
         let mut trans_map = HashMap::new();
         let mut force_map = HashMap::new();
 
+        //Maps boid index to translation
         for (entity, transform1, _) in set.p0().iter() {
             trans_map.insert(
                 entity.index(),
@@ -205,6 +207,7 @@ fn sympathy_force_calc(
                 );
         }
 
+        //Maps boid index to force
         for (transform2, force2) in set.p1().iter() {
             for (entity, info) in trans_map.iter() {
 
@@ -222,7 +225,6 @@ fn sympathy_force_calc(
                force.0 += force_map[&entity.index()];
            }
         }
-
 }
 
 fn turn_boid(
@@ -238,7 +240,6 @@ fn turn_boid(
                 transform.rotate_z(real_turn_speed);            
             } else {
                 transform.rotate_z(-real_turn_speed);
-
             }
         }
         commands.entity(entity).remove::<Force>();
@@ -266,14 +267,12 @@ fn drop_seeds(
     seed_timer.timer.tick(time.delta());
 
     let angle = (rand::thread_rng().gen_range(0..360) as f32).to_radians();
-    let radius = rand::thread_rng().gen_range(0..POND_RADIIUS as i32) as f32;
+    let radius = rand::thread_rng().gen_range(0..(POND_RADIIUS-WALL_AVOIDANCE_DISTANCE) as i32) as f32;
     let seed_transform = Transform::from_translation(Vec3::new(
         angle.cos(),
         angle.sin(),
         0.
     )*radius);
-
-
 
     if seed_timer.timer.finished() {
         commands.spawn((
@@ -301,15 +300,3 @@ fn delete_seed(
         }
     }
 }
-
-
-
-
-
-
-
-
-
-
-
-
