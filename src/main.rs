@@ -5,7 +5,7 @@ use rand::prelude::*;
 use std::time::Duration;
 
 use bevy::{
-    prelude::{*, shape::Capsule},
+    prelude::*,
     math::f32::Vec3,
 };
 
@@ -21,21 +21,31 @@ const BOID_SPEED: f32 = 20.;
 const BOID_ROTATE_SPEED: f32 = 0.5;
 
 const SEPARATION_CIRCLE_RADIUS: f32 = 25.;
-const SEPARATION_CONE_RADIUS: f32 = 20.;
-const SEPARATION_CONE_ANGLE: f32 = 45.0;
+const BOID_SIGHT_RANGE: f32 = 20.;
+const BOID_SIGHT_ANGLE: f32 = 45.0;
 
 const ALIGN_INCLUSION_RADIUS: f32 = 25.;
 
 const WALL_AVOIDANCE_DISTANCE: f32 = 50.;
 const WALL_AVOIDANCE_PUSH: f32 = 1500.;
 
+const SEED_EAT_RANGE: f32 = 5.;
+const SEED_SPAWN_RATE: u64 = 5;
+
 //Main
 fn main() {
     App::new()
-//        .insert_resource(ClearColor(BACKGROUND_COLOR))
         .add_plugins(DefaultPlugins.build().add_before::<bevy::asset::AssetPlugin, _>(EmbeddedAssetPlugin),)
         .add_startup_system(setup)
-        .add_systems((boid_force_calc, sympathy_force_calc, turn_boid, move_boid, drop_seeds).chain())
+        .add_systems((
+                boid_force_calc,
+                sympathy_force_calc,
+                turn_boid,
+                move_boid,
+                drop_seeds,
+                delete_seed,
+        )
+        .chain())
         .run();
 }
 
@@ -104,7 +114,7 @@ fn setup(
 
     //Start see timer
     commands.insert_resource(SeedTimer {
-        timer:Timer::new(Duration::from_secs(10), TimerMode::Repeating),
+        timer:Timer::new(Duration::from_secs(SEED_SPAWN_RATE), TimerMode::Repeating),
     })
 }
 
@@ -145,13 +155,13 @@ fn boid_force_calc(
                     forcesum += 15.*transform2.local_x();
                 }
 
-            if dif_vector.angle_between(transform1.local_x()) > SEPARATION_CONE_ANGLE.to_radians()/2. {
+            if dif_vector.angle_between(transform1.local_x()) > BOID_SIGHT_ANGLE.to_radians()/2. {
                 continue
             }
             
             //Boid avoidance in sight
-            if dif_vector.length() < SEPARATION_CONE_RADIUS {
-                forcesum += -(dif_vector.normalize()*SEPARATION_CONE_RADIUS - dif_vector);
+            if dif_vector.length() < BOID_SIGHT_RANGE {
+                forcesum += -(dif_vector.normalize()*BOID_SIGHT_RANGE - dif_vector);
             }
         }
 
@@ -249,7 +259,7 @@ fn drop_seeds(
     let seed_transform = Transform::from_translation(Vec3::new(
         angle.cos(),
         angle.sin(),
-        1.
+        0.
     )*radius);
 
 
@@ -267,6 +277,19 @@ fn drop_seeds(
     }
 }
 
+fn delete_seed(
+    mut commands: Commands,
+    seeds: Query<(Entity, &Transform), With<Seed>>,
+    boids: Query<&Transform, With<Boid>>,
+) {
+    for (seed, seed_transform) in &seeds {
+        for boid in &boids {
+            if seed_transform.translation.distance(boid.translation) < SEED_EAT_RANGE {
+                commands.entity(seed).despawn_recursive();
+            }
+        }
+    }
+}
 
 
 
