@@ -13,7 +13,7 @@ pub const BOID_SIGHT_ANGLE: f32 = 45.0;
 
 pub const ALIGN_INCLUSION_RADIUS: f32 = 25.;
 
-pub const WALL_AVOIDANCE_DISTANCE: f32 = 50.;
+pub const WALL_AVOIDANCE_DISTANCE: f32 = 20.;
 pub const WALL_AVOIDANCE_PUSH: f32 = 15.;
 
 pub const SEED_EAT_RANGE: f32 = 5.;
