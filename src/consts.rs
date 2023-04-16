@@ -1,7 +1,7 @@
 //Configuration
 pub const POND_RADIIUS: f32 = 200.;
 
-pub const NUMBER_OF_BOIDS: i32 = 50;
+pub const NUMBER_OF_BOIDS: i32 = 64;
 pub const BOID_SCALE: f32 = 20.;
 
 pub const BOID_SPEED: f32 = 20.;

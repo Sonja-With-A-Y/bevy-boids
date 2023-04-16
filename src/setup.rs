@@ -1,5 +1,3 @@
-use bevy::pbr::CascadeShadowConfigBuilder;
-
 use crate::*;
 
 pub fn setup(
@@ -20,7 +18,7 @@ pub fn setup(
         directional_light: DirectionalLight {
             shadows_enabled: true,
             illuminance: 25000.,
-                ..default()
+            ..default()
         },
         transform: Transform {
             translation: Vec3::new(0., 1., 2.),
@@ -30,12 +28,13 @@ pub fn setup(
         cascade_shadow_config: CascadeShadowConfigBuilder {
             maximum_distance: 500.,
             first_cascade_far_bound: 10.,
-                ..default()
-        }.into(),
+            ..default()
+        }
+        .into(),
         ..default()
     });
 
-   //Camera
+    //Camera
     commands.spawn(Camera3dBundle {
         transform: Transform::from_xyz(0., -300., 80.0).looking_at(Vec3::ZERO, Vec3::Z),
         ..default()
@@ -54,9 +53,13 @@ pub fn setup(
         commands.spawn((
             SceneBundle {
                 scene: game_assets.boid_scene.clone(),
-                transform: Transform::from_translation(Vec3::new(j-25., 0., 0.))
-                .with_rotation(Quat::from_rotation_z((j*30.0_f32+1.).to_radians()))
-                .with_scale(Vec3 { x: BOID_SCALE, y: BOID_SCALE, z: BOID_SCALE }),
+                transform: Transform::from_translation(Vec3::new(j - 25., 0., 0.))
+                    .with_rotation(Quat::from_rotation_z((j * 30.0_f32 + 1.).to_radians()))
+                    .with_scale(Vec3 {
+                        x: BOID_SCALE,
+                        y: BOID_SCALE,
+                        z: BOID_SCALE,
+                    }),
                 ..Default::default()
             },
             Boid,
@@ -65,7 +68,6 @@ pub fn setup(
 
     //Start see timer
     commands.insert_resource(SeedTimer {
-        timer:Timer::new(Duration::from_secs(SEED_SPAWN_RATE), TimerMode::Repeating),
+        timer: Timer::new(Duration::from_secs(SEED_SPAWN_RATE), TimerMode::Repeating),
     })
 }
-

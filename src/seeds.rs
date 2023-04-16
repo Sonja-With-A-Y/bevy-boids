@@ -6,8 +6,9 @@ use crate::*;
 pub struct Seed;
 
 #[derive(Resource)]
-pub struct SeedTimer { pub timer: Timer }
-
+pub struct SeedTimer {
+    pub timer: Timer,
+}
 
 pub fn drop_seeds(
     mut commands: Commands,
@@ -19,22 +20,20 @@ pub fn drop_seeds(
     seed_timer.timer.tick(time.delta());
 
     let angle = (rand::thread_rng().gen_range(0..360) as f32).to_radians();
-    let radius = rand::thread_rng().gen_range(0..(POND_RADIIUS-WALL_AVOIDANCE_DISTANCE) as i32) as f32;
-    let seed_transform = Transform::from_translation(Vec3::new(
-        angle.cos(),
-        angle.sin(),
-        0.
-    )*radius);
+    let radius =
+        rand::thread_rng().gen_range(0..(POND_RADIIUS - WALL_AVOIDANCE_DISTANCE) as i32) as f32;
+    let seed_transform =
+        Transform::from_translation(Vec3::new(angle.cos(), angle.sin(), 0.) * radius);
 
     if seed_timer.timer.finished() {
         commands.spawn((
-                PbrBundle {
-                    mesh: meshes.add(shape::Capsule::default().into()),
-                    material: materials.add(Color::rgb(0.8, 0.6, 0.0).into()),
-                    transform: seed_transform,
-                    ..default()
-                },
-                Seed,
+            PbrBundle {
+                mesh: meshes.add(shape::Capsule::default().into()),
+                material: materials.add(Color::rgb(0.8, 0.6, 0.0).into()),
+                transform: seed_transform,
+                ..default()
+            },
+            Seed,
         ));
     }
 }
