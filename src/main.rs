@@ -12,12 +12,14 @@ mod boids;
 mod consts;
 mod seeds;
 mod setup;
+mod camera;
 
 pub use assets::*;
 pub use boids::*;
 pub use consts::*;
 pub use seeds::*;
 pub use setup::*;
+pub use camera::*;
 
 //Main
 fn main() {
@@ -37,6 +39,7 @@ fn main() {
                 move_boid,
                 drop_seeds,
                 delete_seed,
+                camera_controls,
             )
                 .chain(),
         )

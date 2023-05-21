@@ -25,7 +25,8 @@ pub fn boid_force_calc(
         //Seed sighted
         for seed in &seeds {
             if transform1.translation.distance(seed.translation) < HUNGER_RANGE {
-                forcesum += (seed.translation - transform1.translation).normalize() * HUNGER_FACTOR;
+                forcesum += (seed.translation - transform1.translation)
+                .normalize() * HUNGER_FACTOR;
             }
         }
 
@@ -47,13 +48,15 @@ pub fn boid_force_calc(
 
             //Boid alignment
             if dif_vector.length() < ALIGN_INCLUSION_RADIUS
-                && transform2.local_x().angle_between(transform1.local_x()) < 90.0_f32.to_radians()
+                && transform2.local_x().angle_between(transform1.local_x()) < 90.0_f32
+                .to_radians()
             {
                 forcesum += 15. * transform2.local_x();
             }
 
             //Boid avoidance in sight
-            if dif_vector.angle_between(transform1.local_x()) > BOID_SIGHT_ANGLE.to_radians() / 2. {
+            if dif_vector.angle_between(transform1.local_x())
+                > BOID_SIGHT_ANGLE.to_radians() / 2. {
                 continue;
             }
 
