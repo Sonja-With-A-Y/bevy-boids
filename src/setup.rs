@@ -53,7 +53,7 @@ pub fn setup(
         commands.spawn((
             SceneBundle {
                 scene: game_assets.boid_scene.clone(),
-                transform: Transform::from_translation(Vec3::new(j - 25., 0., 0.))
+                transform: Transform::from_translation(Vec3::new(j*3. - 100., 0., 0.))
                     .with_rotation(Quat::from_rotation_z((j * 30.0_f32 + 1.).to_radians()))
                     .with_scale(Vec3 {
                         x: BOID_SCALE,
